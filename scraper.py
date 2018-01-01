@@ -3,59 +3,54 @@
 from urllib import urlopen
 from bs4 import BeautifulSoup
 
-base = 'http://www.billboard.com/charts/'
-category = ''
-date = ''
+class Scraper(object):
+    """Class that'll contain the categories and its methods."""
+    categories = dict()
+    base = 'http://www.billboard.com/charts/'
+    bsoup = ''
 
-categories = dict()
+    def __init__(self, parser):
+        self.bsoup = BeautifulSoup(urlopen(self.base), parser)
 
-r = urlopen(base + category + date)
-soup = BeautifulSoup(r, 'html.parser')
-#table = soup.find("div", {"id" : "charts-list"})
+    def init_categories(self):
+        """scrapes the charts site and collects all charts of each category."""
+        table = self.bsoup.find("div", {"id" : "charts-list"})
+        current_cat = ''
+        for child in table.children:
+            name = child.name
+            if name == 'h3':
+                current_cat = child.get_text()
+                self.categories[current_cat] = dict()
+            elif name == 'article':
+                chart = child.findChild("a", {"class" : "chart-row__chart-link"})
+                self.categories[current_cat][chart.get_text()] = chart['href']
 
-def scrape_categories(bsoup, category_dict):
-    """scrapes the charts site and collects all charts of each category."""
-    table = bsoup.find("div", {"id" : "charts-list"})
-    current_cat = ''
-    for child in table.children:
-        name = child.name
-        if name == 'h3':
-            current_cat = child.get_text()
-            category_dict[current_cat] = []
-        elif name == 'article':
-            chart = child.findChild("a", {"class" : "chart-row__chart-link"})
-            category_dict[current_cat].append((chart.get_text(), chart['href']))
-def print_charts(category_list):
-    """outputs all charts in a category."""
-    ctr = -1
-    for chart in category_list:
-        ctr += 1
-        print ctr, ': ', chart[0]
-def print_categories(category_dict):
-    """outputs all categories that were found on the charts site."""
-    ctr = -1
-    for cat in category_dict.keys():
-        ctr += 1
-        print ctr, ': ', cat
-scrape_categories(soup, categories)
+    def get_charts(self, category):
+        """gets list of all charts of a category."""
+        return self.categories[category].keys()
 
+    def get_link_of_chart(self, genre, chart):
+        """gets trailing part of the link for the specified chart."""
+        return self.categories[genre][chart]
 
+    def get_full_link(self, genre, chart):
+        """gets full link of the specified chart."""
+        return 'http://www.billboard.com' + self.get_link_of_chart(genre, chart)
 
-# this will be used for testing for now. I'll modularize it later...
+    def print_categories(self):
+        """outputs all categories that were found on the charts site."""
+        ctr = -1
+        for cat in self.categories.keys():
+            ctr += 1
+            print ctr, ': ', cat
 
-print 'Which genre do you want to view charts of?'
-print_categories(categories)
-pick = int(input("Enter a number: "))
+    def print_charts(self, category):
+        """outputs all categories that were found on the charts site."""
+        ctr = -1
+        for cat in self.get_charts(category):
+            ctr += 1
+            print ctr, ': ', cat
 
-if pick > len(categories.keys()) or pick < 0:
-    print 'The inputted number isn\'t valid.'
-else:
-    print 'Which chart do you want to view?'
-    charts = categories[categories.keys()[pick]]
-    print_charts(charts)
-    pick = int(input("Enter a number: "))
-    if pick > len(charts) or pick < 0:
-        print 'The inputted number isn\'t valid.'
-    else:
-        link = 'http://www.billboard.com' + charts[pick][1]
-        print 'link: ', link
+billboard = Scraper('html.parser')
+billboard.init_categories()
+billboard.print_categories()
