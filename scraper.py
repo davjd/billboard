@@ -3,14 +3,34 @@
 from urllib import urlopen
 from bs4 import BeautifulSoup
 
+class Song(object):
+    """Class that'll contain the categories and its methods."""
+    title = ''
+    artist = ''
+    artist_href = ''
+    img_src = ''
+    current_week = ''
+    last_week = ''
+
+    def __init__(self, title, artist, artist_href, img_src, current_week, last_week):
+        self.title = title
+        self.artist = artist
+        self.artist_href = artist_href
+        self.img_src = img_src
+        self.current_week = current_week
+        self.last_week = last_week
+
+
 class Scraper(object):
     """Class that'll contain the categories and its methods."""
     categories = dict()
     base = 'http://www.billboard.com/charts/'
+    parser = ''
     bsoup = ''
 
     def __init__(self, parser):
-        self.bsoup = BeautifulSoup(urlopen(self.base), parser)
+        self.parser = parser
+        self.bsoup = BeautifulSoup(urlopen(self.base), self.parser)
 
     def init_categories(self):
         """scrapes the charts site and collects all charts of each category."""
@@ -50,7 +70,25 @@ class Scraper(object):
         for cat in self.get_charts(category):
             ctr += 1
             print ctr, ': ', cat
+    
+    def get_songs(self, genre, chart):
+        """will get all songs of a chart, creating song objects."""
+        link = self.get_full_link(genre, chart)
+        soup = BeautifulSoup(urlopen(link), self.parser)
+        cells = soup.find_all("div", {"class" : "chart-row__main-display"})
+        for cell in cells:
+            rank = cell.find("div", {"class" : "chart-row__rank"})
+            current = rank.find("span", {"class" : "chart-row__current-week"}).get_text()
+            last_week = rank.find("span", {"class" : "chart-row__last-week"}).get_text()
+            img_block = cell.find("div", {"class" : "chart-row__image"})
+            img_src = ''
+            if img_block.has_attr('style'):
+                img_src = img_block['style']
+            elif img_block.has_attr('data-imagesrc'):
+                img_src = img_block['data-imagesrc']
+            print img_src, '\n'
+
 
 billboard = Scraper('html.parser')
 billboard.init_categories()
-billboard.print_categories()
+billboard.get_songs("R&B/Hip-Hop", "Hot R&B/Hip-Hop Songs")
