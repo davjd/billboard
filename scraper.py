@@ -7,15 +7,13 @@ class Song(object):
     """Class that'll contain the categories and its methods."""
     title = ''
     artist = ''
-    artist_href = ''
     img_src = ''
     current_week = ''
     last_week = ''
 
-    def __init__(self, title, artist, artist_href, img_src, current_week, last_week):
+    def __init__(self, title, artist, img_src, current_week, last_week):
         self.title = title
         self.artist = artist
-        self.artist_href = artist_href
         self.img_src = img_src
         self.current_week = current_week
         self.last_week = last_week
@@ -70,25 +68,58 @@ class Scraper(object):
         for cat in self.get_charts(category):
             ctr += 1
             print ctr, ': ', cat
-    
+
+    @staticmethod
+    def parse_style_img(img_src):
+        """parses url css format to obtain link of img src."""
+        start_idx = img_src.find('(') + 1
+        end_idx = img_src.find(')')
+        return img_src[start_idx:end_idx]
+    @staticmethod
+    def parse_html_text(txt):
+        """removes all newlines from a string, needed because of how get_text() works."""
+        return txt.strip().replace("\t", " ").replace("\r", " ").replace('\n', ' ')
+
+
     def get_songs(self, genre, chart):
         """will get all songs of a chart, creating song objects."""
+        songs = []
         link = self.get_full_link(genre, chart)
         soup = BeautifulSoup(urlopen(link), self.parser)
         cells = soup.find_all("div", {"class" : "chart-row__main-display"})
         for cell in cells:
-            rank = cell.find("div", {"class" : "chart-row__rank"})
-            current = rank.find("span", {"class" : "chart-row__current-week"}).get_text()
-            last_week = rank.find("span", {"class" : "chart-row__last-week"}).get_text()
-            img_block = cell.find("div", {"class" : "chart-row__image"})
             img_src = ''
+            artist = ''
+
+            rank = cell.find("div", {"class" : "chart-row__rank"})
+            current_week = rank.find("span", {"class" : "chart-row__current-week"}).get_text()
+            last_week = rank.find("span", {"class" : "chart-row__last-week"}).get_text()
+
+            img_block = cell.find("div", {"class" : "chart-row__image"})
             if img_block.has_attr('style'):
-                img_src = img_block['style']
+                img_src = self.parse_style_img(img_block['style'])
             elif img_block.has_attr('data-imagesrc'):
                 img_src = img_block['data-imagesrc']
-            print img_src, '\n'
+            else:
+                img_src = 'https://www.billboard.com/assets/1515013425/images/chart-row-placeholder.jpg?e7e59651befde326da9c'
+
+            info_row = cell.find("div", {"class" : "chart-row__container"})
+            title = info_row.find("h2", {"class" : "chart-row__song"}).get_text()
+            artist_anchor = info_row.find("a", {"class" : "chart-row__artist"})
+            artist_span = info_row.find("span", {"class" : "chart-row__artist"})
+            if artist_anchor is not None:
+                artist = self.parse_html_text(artist_anchor.get_text())
+            elif artist_span is not None:
+                artist = self.parse_html_text(artist_span.get_text())
+            songs.append(Song(title, artist, img_src, current_week, last_week))
+        return songs
 
 
 billboard = Scraper('html.parser')
 billboard.init_categories()
-billboard.get_songs("R&B/Hip-Hop", "Hot R&B/Hip-Hop Songs")
+for song in billboard.get_songs("R&B/Hip-Hop", "Hot R&B/Hip-Hop Songs"):
+    print 'artist: ', song.artist
+    print 'title: ', song.title
+    print 'img: ', song.img_src
+    print 'current rank: ', song.current_week
+    print 'last week rank: ', song.last_week, '\n'
