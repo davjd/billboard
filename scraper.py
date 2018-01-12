@@ -26,9 +26,11 @@ class Scraper(object):
     parser = ''
     bsoup = ''
 
-    def __init__(self, parser):
+    def __init__(self, parser, initialize=False):
         self.parser = parser
         self.bsoup = BeautifulSoup(urlopen(self.base), self.parser)
+        if initialize:
+            self.init_categories()
 
     def init_categories(self):
         """scrapes the charts site and collects all charts of each category."""
@@ -75,14 +77,14 @@ class Scraper(object):
         start_idx = img_src.find('(') + 1
         end_idx = img_src.find(')')
         return img_src[start_idx:end_idx]
+
     @staticmethod
     def parse_html_text(txt):
         """removes all newlines from a string, needed because of how get_text() works."""
         return txt.strip().replace("\t", " ").replace("\r", " ").replace('\n', ' ')
 
-
-    def get_songs(self, genre, chart):
-        """will get all songs of a chart, creating song objects."""
+    def get_list(self, genre, chart):
+        """will get songs/albums of a chart, creating song objects."""
         songs = []
         link = self.get_full_link(genre, chart)
         soup = BeautifulSoup(urlopen(link), self.parser)
@@ -114,12 +116,18 @@ class Scraper(object):
             songs.append(Song(title, artist, img_src, current_week, last_week))
         return songs
 
+    def print_song_info(self, genre, chart):
+        """prints song information of a given category and chart."""
+        songs = self.get_list(genre, chart)
+        for song in songs:
+            print 'artist: ', song.artist
+            print 'title: ', song.title
+            print 'img: ', song.img_src
+            print 'current rank: ', song.current_week
+            print 'last week rank: ', song.last_week, '\n'
+
+
 
 billboard = Scraper('html.parser')
 billboard.init_categories()
-for song in billboard.get_songs("R&B/Hip-Hop", "Hot R&B/Hip-Hop Songs"):
-    print 'artist: ', song.artist
-    print 'title: ', song.title
-    print 'img: ', song.img_src
-    print 'current rank: ', song.current_week
-    print 'last week rank: ', song.last_week, '\n'
+billboard.print_song_info("Overall Popularity", "Hot 100")
